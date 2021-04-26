@@ -1,0 +1,15 @@
+GET localhost:7777/hello
+
+
+###
+POST localhost:7777/todo?title="oo"
+
+
+
+###
+GET localhost:7777/todo/1
+
+
+
+###
+POST localhost:7777/todo/done?id=1
