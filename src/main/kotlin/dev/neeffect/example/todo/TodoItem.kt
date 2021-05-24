@@ -1,4 +1,4 @@
-package pl.setblack.nee.example.todolist
+package dev.neeffect.example.todo
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import java.time.Instant
 
-inline class TodoId @JsonCreator constructor(val id: Int) {
+inline class TodoId @JsonCreator constructor(val id: Long) {
     fun next() =
         TodoId(id + 1)
 }

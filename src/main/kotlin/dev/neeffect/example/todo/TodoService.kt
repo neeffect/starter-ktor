@@ -1,49 +1,104 @@
-package pl.setblack.nee.example.todolist
+package dev.neeffect.example.todo
 
 import dev.neeffect.nee.Nee
 import dev.neeffect.nee.atomic.AtomicRef
+import dev.neeffect.nee.ctx.web.JDBCBasedWebContextProvider
+import dev.neeffect.nee.ctx.web.WebContext
+import dev.neeffect.nee.effects.jdbc.JDBCProvider
 import dev.neeffect.nee.withErrorType
+import dev.neeffect.example.todo.db.Sequences
+import dev.neeffect.example.todo.db.tables.AllItemsView
+import dev.neeffect.example.todo.db.tables.DoneItems
+import dev.neeffect.example.todo.db.tables.TodoItems
+import dev.neeffect.example.todo.db.tables.records.AllItemsViewRecord
+import dev.neeffect.example.todo.db.tables.records.DoneItemsRecord
+import dev.neeffect.nee.widerError
+import io.vavr.Tuple
 import io.vavr.Tuple2
 import io.vavr.collection.Seq
 import io.vavr.control.Option
+import io.vavr.kotlin.option
+import io.vavr.kotlin.toVavrList
+import org.jooq.impl.DSL
+import java.sql.Connection
 import java.time.Instant
 
-typealias TodoIO<A> = Nee<Any, TodoError, A>
+typealias WebCtx = WebContext<Connection, JDBCProvider>
+typealias TodoIO<A> = Nee<WebCtx, TodoError, A>
 
 data class TodoService(
-    val timeProvider: Nee<Any, Nothing, Instant>,
+    val timeProvider: Nee<WebCtx, TodoError, Instant>,
+    val ctxProvider: JDBCBasedWebContextProvider,
     val state: AtomicRef<TodoState> = AtomicRef(TodoState())
 ) {
 
+    val tx = ctxProvider.fx().tx.handleError { e -> TodoError.InternalError(e.toString()) }
+
+    @Suppress("ReturnUnit") // seems to be an error (access to generated sources)
     fun addItem(title: String): TodoIO<TodoId> =
-        timeProvider.e().flatMap { time ->
-            state.modifyGet { s ->
-                val item = TodoItem.Active(title, time)
-                s.addItem(item)
-            }.map { it.second }
+        timeProvider.flatMap { time ->
+            Nee.with(tx) { r ->
+                val dsl = DSL.using(r.getConnection().getResource())
+                dsl.nextval(Sequences.TODOSEQ)
+            }.flatMap { key ->
+                Nee.with(tx) { r ->
+                    val dsl = DSL.using(r.getConnection().getResource())
+                    val todoItem = TodoItem.Active(title, time)
+                    val inserted = dsl.insertInto(TodoItems.TODO_ITEMS).set(
+                        dsl.newRecord(TodoItems.TODO_ITEMS, todoItem).also {
+                            it.set(TodoItems.TODO_ITEMS.ID, key.toBigDecimal())
+                        }
+                    ).execute()
+                    assert(inserted == 1)
+                    TodoId(key)
+                }
+            }
+        }
+
+    fun findActive(): TodoIO<Seq<Tuple2<TodoId, TodoItem>>> =
+        Nee.with(tx) { r ->
+            val dsl = DSL.using(r.getConnection().getResource())
+            val z: MutableList<TodoRecord> = dsl.selectFrom(TodoItems.TODO_ITEMS).fetchInto(TodoRecord::class.java)
+            z.map { record ->
+                Tuple.of(TodoId(record.id), TodoItem.Active(record.title, record.created) as TodoItem)
+            }.toVavrList()
         }
 
     fun markDone(id: TodoId): TodoIO<TodoItem> =
-        state.modifyGet { s ->
-            val res = s.markDone(id)
-            res
-        }.e().flatMap {
-           it.second.mapLeft { error ->
-                Nee.fail(error)
-            }.map { item ->
-                Nee.success { item }.e()
-            }.neeMerge()
-        }
-    fun findActive(): TodoIO<Seq<Tuple2<TodoId, TodoItem>>> =
-        state.get().e().map {
-            it.getAll()
-                .filter { tuple ->
-                    tuple._2.isActive()
-                }.map { tuple -> tuple }
+        findItem(id).flatMap { maybeItem ->
+            maybeItem.map {todoItem ->
+                Nee.with(tx) { r ->
+                    val dsl = DSL.using(r.getConnection().getResource())
+                    val inserted = dsl.insertInto(DoneItems.DONE_ITEMS).values(id.id)
+                        .execute()
+                    assert( inserted == 1)
+                    TodoItem.Done(todoItem)
+                } as TodoIO<TodoItem>
+            }.getOrElse {
+                Nee.failOnly<WebCtx, TodoError, TodoItem>(TodoError.NotFound)
+            }
         }
 
-    fun findItem(id: TodoId): TodoIO<Option<TodoItem>> =
-        state.get().map { it.getItem(id) }
+
+
+    data class TodoRecord(val id: Long, val title: String, val created: Instant)
+
+    fun findItem(id: TodoId): TodoIO<Option<TodoItem>> = Nee.with(tx) { r ->
+        val dsl = DSL.using(r.getConnection().getResource())
+        val z: Option<AllItemsViewRecord> =
+            Option.ofOptional(dsl.selectFrom(AllItemsView.ALL_ITEMS_VIEW)
+                .where(AllItemsView.ALL_ITEMS_VIEW.ID.eq(id.id.toBigDecimal()))
+                .fetchOptionalInto(AllItemsViewRecord::class.java))
+        z.map { record ->
+            val item = TodoItem.Active(record.title, record.created.toInstant())
+            if (record.done != null) {
+                TodoItem.Done(item)
+            } else {
+                item
+            }
+        }
+    }
+
 
     fun cancelItem(id: TodoId) = state.modifyGet { s ->
         s.markCancelled(id)
@@ -64,4 +119,4 @@ data class TodoService(
     }
 }
 
-fun <A> Nee<Any, Nothing, A>.e() = this.withErrorType<Any, TodoError, A>()
+fun <A> Nee<WebCtx, Nothing, A>.e() = this.withErrorType<WebCtx, TodoError, A>()

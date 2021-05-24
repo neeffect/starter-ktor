@@ -1,0 +1,26 @@
+create sequence TodoSeq;
+
+CREATE TABLE TODO_ITEMS (
+                               id NUMBER  NOT NULL,
+                               title VARCHAR(50) NOT NULL,
+                               created TIMESTAMP NOT NULL,
+                               PRIMARY KEY (ID)
+);
+
+CREATE TABLE DONE_ITEMS
+(
+    ID NUMBER,
+    FOREIGN KEY (ID) REFERENCES TODO_ITEMS(ID)
+);
+
+CREATE TABLE CANCELLED_ITEMS
+(
+    ID NUMBER,
+    FOREIGN KEY (ID) REFERENCES TODO_ITEMS(ID)
+);
+
+CREATE VIEW ALL_ITEMS_VIEW AS
+    SELECT A.ID, A.TITLE, A.CREATED, D.ID as DONE, C.ID as CANCELLED  FROM TODO_ITEMS A
+    LEFT OUTER JOIN DONE_ITEMS D on A.ID = D.ID
+    LEFT OUTER JOIN CANCELLED_ITEMS C on A.ID = C.ID;
+

@@ -1,4 +1,4 @@
-package pl.setblack.nee.example.todolist
+package dev.neeffect.example.todo
 
 import dev.neeffect.nee.effects.utils.merge
 import io.vavr.collection.Map
