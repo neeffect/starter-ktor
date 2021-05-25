@@ -117,71 +117,80 @@ class TodoServerTest : StringSpec({
             }
         }
     }
-//    "done twice on same item should lead to 409"{
-//        withTestApplication({
-//            todoRest()
-//        }) {
-//            val id = addItemUsingPOST("hello")
-//            handleRequest(HttpMethod.Post, "/todo/done?id=$id")
-//            with(handleRequest(HttpMethod.Post, "/todo/done?id=$id")) {
-//                response.status().shouldBe(HttpStatusCode.Conflict)
-//            }
-//        }
-//    }
-//    "done should not be on todo list" {
-//        withTestApplication({
-//            todoRest()
-//        }) {
-//            val id = addItemUsingPOST("hello")
-//            handleRequest(HttpMethod.Post, "/todo/done?id=$id")
-//            with(handleRequest(HttpMethod.Get, "/todo")) {
-//                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
-//                    object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
-//                items.size() shouldBe 0
-//            }
-//        }
-//    }
-//    "done should  be on done list" {
-//        withTestApplication({
-//            todoRest()
-//        }) {
-//            val id = addItemUsingPOST("hello")
-//            handleRequest(HttpMethod.Post, "/todo/done?id=$id")
-//            with(handleRequest(HttpMethod.Get, "/todo/done")) {
-//                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
-//                    object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
-//                items.size() shouldBe 1
-//            }
-//        }
-//    }
-//
-//    "cancelled should not be on todo list" {
-//
-//        withTestApplication({
-//            todoRest()
-//        }) {
-//            val id = addItemUsingPOST("hello")
-//            handleRequest(HttpMethod.Delete, "/todo/$id")
-//            with(handleRequest(HttpMethod.Get, "/todo")) {
-//                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
-//                    object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
-//                items.size() shouldBe 0
-//            }
-//        }
-//    }
-//    "cancelled should be on cancelled list" {
-//        withTestApplication({
-//            todoRest()
-//        }) {
-//            val id = addItemUsingPOST("hello")
-//            handleRequest(HttpMethod.Delete, "/todo/$id")
-//            with(handleRequest(HttpMethod.Get, "/todo/cancelled")) {
-//                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
-//                    object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
-//                items.size() shouldBe 1
-//            }
-//        }
-//    }
+    "done twice on same item should lead to 409"{
+        usingTestDb() { testCtx ->
+            withTestApplication({
+                todoRest(testCtx)()
+            }) {
+                val id = addItemUsingPOST("hello")
+                handleRequest(HttpMethod.Post, "/todo/done?id=$id")
+                with(handleRequest(HttpMethod.Post, "/todo/done?id=$id")) {
+                    response.status().shouldBe(HttpStatusCode.Conflict)
+                }
+            }
+        }
+    }
+    "done should not be on todo list" {
+        usingTestDb() { testCtx ->
+            withTestApplication({
+                todoRest(testCtx)()
+            }) {
+                val id = addItemUsingPOST("hello")
+                handleRequest(HttpMethod.Post, "/todo/done?id=$id")
+                with(handleRequest(HttpMethod.Get, "/todo")) {
+                    val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                        object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
+                    items.size() shouldBe 0
+                }
+            }
+        }
+    }
+    "done should  be on done list" {
+        usingTestDb() { testCtx ->
+            withTestApplication({
+                todoRest(testCtx)()
+            }) {
+                val id = addItemUsingPOST("hello")
+                handleRequest(HttpMethod.Post, "/todo/done?id=$id")
+                with(handleRequest(HttpMethod.Get, "/todo/done")) {
+                    val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                        object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
+                    items.size() shouldBe 1
+                }
+            }
+        }
+    }
+
+    "cancelled should not be on todo list" {
+        usingTestDb() { testCtx ->
+            withTestApplication({
+                todoRest(testCtx)()
+            }) {
+                val id = addItemUsingPOST("hello")
+                handleRequest(HttpMethod.Delete, "/todo/$id")
+                with(handleRequest(HttpMethod.Get, "/todo")) {
+                    val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                        object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
+                    items.size() shouldBe 0
+                }
+            }
+        }
+    }
+    "cancelled should be on cancelled list" {
+        usingTestDb() { testCtx ->
+            withTestApplication({
+                todoRest(testCtx)()
+            }) {
+                val id = addItemUsingPOST("hello")
+                handleRequest(HttpMethod.Delete, "/todo/$id")
+                with(handleRequest(HttpMethod.Get, "/todo/cancelled")) {
+                    val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                        object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
+                    items.size() shouldBe 1
+                }
+            }
+        }
+    }
 }) {
     companion object {
         val constTime = HasteTimeProvider(Haste.TimeSource.withFixedClock(Clock.fixed(
@@ -189,7 +198,7 @@ class TodoServerTest : StringSpec({
             ZoneId.of("UTC")
         )))
 
-//        val ctxProvider = webContextProvider
+        //        val ctxProvider = webContextProvider
         fun todoRest(testContextProvider: JDBCBasedWebContextProvider) = run {
             testApplication(DefaultJacksonMapper.mapper, testContextProvider) {
                 TodoServer.defineRouting(testContextProvider, constTime)
@@ -242,7 +251,7 @@ class TestDB : AutoCloseable {
 
     override fun close() {
         connection.createStatement().use { dropAll ->
-            val result = dropAll.execute("drop all objects")
+            dropAll.execute("drop all objects")
         }
         connection.close()
     }

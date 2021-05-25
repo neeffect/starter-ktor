@@ -2,6 +2,7 @@ package dev.neeffect.example.todo
 
 import dev.neeffect.nee.Nee
 import dev.neeffect.nee.ctx.web.JDBCBasedWebContextProvider
+import dev.neeffect.nee.ctx.web.pure.delete
 import dev.neeffect.nee.ctx.web.pure.get
 import dev.neeffect.nee.ctx.web.pure.nested
 import dev.neeffect.nee.ctx.web.pure.post
@@ -34,14 +35,25 @@ object TodoServer {
                     }.mapLeft {
                         Nee.fail(it) as TodoIO<Nothing>
                     }.neeMerge()
+                } + rb.get {
+                    service.findDone()
                 }
-
-            }+ rb.post {
+            } + rb.get("/cancelled") {
+                service.findCancelled()
+            } + rb.post {
                 it.parameters["title"]?.let { title ->
                     service.addItem(title)
                 } ?: Nee.fail(TodoError.InvalidParam)
             } + rb.get {
                 service.findActive()
+            } + rb.delete("/{id}") {
+                it.parameters["id"].asId().map {
+                    Nee.success { it }.e().flatMap { id ->
+                        service.cancelItem(TodoId(id))
+                    }
+                }.mapLeft {
+                    Nee.fail(it) as TodoIO<Nothing>
+                }.neeMerge()
             }
         }
     }

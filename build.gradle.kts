@@ -2,7 +2,7 @@ import com.rohanprabhu.gradle.plugins.kdjooq.*
 
 plugins {
     kotlin("jvm") version "1.4.31"
-    id("io.gitlab.arturbosch.detekt").version("1.16.0")
+    id("io.gitlab.arturbosch.detekt").version("1.17.1")
     id("org.flywaydb.flyway").version("7.8.2")
     id("com.rohanprabhu.kotlin-dsl-jooq") version "0.4.6"
 }
@@ -57,7 +57,7 @@ val nee_version = "0.7.2-LOCAL"
 dependencies {
     implementation("pl.setblack:nee-ctx-web-ktor:$nee_version")
     detektPlugins("pl.setblack:kure-potlin:0.5.0")
-    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.16.0")
+    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.17.1")
     implementation("io.ktor:ktor-http-jvm:$ktor_version")
     implementation("io.ktor:ktor-jackson:$ktor_version")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.12.0")
@@ -93,6 +93,11 @@ compileTestKotlin.kotlinOptions.apply {
     javaParameters = true
     allWarningsAsErrors = false
     freeCompilerArgs = listOf("-XXLanguage:+InlineClasses")
+}
+
+detekt {
+    toolVersion = "1.17.1"
+    input = files("src/main/kotlin")
 }
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
