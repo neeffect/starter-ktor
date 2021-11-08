@@ -1,5 +1,6 @@
 package dev.neeffect.example.todo
 
+import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.core.type.TypeReference
 import dev.neeffect.nee.ctx.web.DefaultJacksonMapper
 import dev.neeffect.nee.effects.time.HasteTimeProvider
@@ -23,6 +24,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 
+@Suppress("ReturnUnit")
 class TodoServerTest : StringSpec({
 
     "add item should give an id" {
@@ -30,8 +32,8 @@ class TodoServerTest : StringSpec({
             todoRest()
         }) {
             with(handleRequest(HttpMethod.Post, "/todo?title=hello")) {
-                val addedId = DefaultJacksonMapper.mapper.readValue(response.byteContent!!, TodoIdAlt::class.java)
-                addedId shouldBe (TodoIdAlt(1))
+                val addedId = DefaultJacksonMapper.mapper.readValue(response.byteContent, Int::class.java)
+                addedId shouldBe (1)
             }
         }
     }
@@ -41,7 +43,7 @@ class TodoServerTest : StringSpec({
         }) {
             addItemUsingPOST("hello")
             with(handleRequest(HttpMethod.Get, "/todo/1")) {
-                val item = DefaultJacksonMapper.mapper.readValue(response.byteContent!!, TodoItem::class.java)
+                val item = DefaultJacksonMapper.mapper.readValue(response.byteContent, TodoItem::class.java)
                 item.title shouldBe "hello"
             }
         }
@@ -62,13 +64,14 @@ class TodoServerTest : StringSpec({
         }) {
             addItemUsingPOST("hello")
             with(handleRequest(HttpMethod.Get, "/todo")) {
-                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent,
                     object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
                 items.size() shouldBe 1
                 items[0]._2.title shouldBe ("hello")
             }
         }
     }
+
     "added  multiple items should be in find all" {
         withTestApplication({
             todoRest()
@@ -77,28 +80,28 @@ class TodoServerTest : StringSpec({
                 addItemUsingPOST("hello_$it")
             }
             with(handleRequest(HttpMethod.Get, "/todo")) {
-                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent,
                     object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
                 items.size() shouldBe 3
                 items.map { it._2.title } shouldContainAll ((0 until 3).map { "hello_$it" })
             }
         }
     }
-    "done should mark as done"{
+    "done should mark as done" {
         withTestApplication({
             todoRest()
         }) {
             val id = addItemUsingPOST("hello")
             handleRequest(HttpMethod.Post, "/todo/done?id=$id")
-            with(handleRequest(HttpMethod.Get, "/todo/${id}")) {
-                val content = response.byteContent!!
+            with(handleRequest(HttpMethod.Get, "/todo/$id")) {
+                val content = response.byteContent
                 val item = DefaultJacksonMapper.mapper.readValue(content, TodoItem::class.java)
                 item.title shouldBe "hello"
                 item.shouldBeTypeOf<TodoItem.Done>()
             }
         }
     }
-    "done twice on same item should lead to 409"{
+    "done twice on same item should lead to 409" {
         withTestApplication({
             todoRest()
         }) {
@@ -116,7 +119,7 @@ class TodoServerTest : StringSpec({
             val id = addItemUsingPOST("hello")
             handleRequest(HttpMethod.Post, "/todo/done?id=$id")
             with(handleRequest(HttpMethod.Get, "/todo")) {
-                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent,
                     object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
                 items.size() shouldBe 0
             }
@@ -129,7 +132,7 @@ class TodoServerTest : StringSpec({
             val id = addItemUsingPOST("hello")
             handleRequest(HttpMethod.Post, "/todo/done?id=$id")
             with(handleRequest(HttpMethod.Get, "/todo/done")) {
-                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent,
                     object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
                 items.size() shouldBe 1
             }
@@ -143,7 +146,7 @@ class TodoServerTest : StringSpec({
             val id = addItemUsingPOST("hello")
             handleRequest(HttpMethod.Delete, "/todo/$id")
             with(handleRequest(HttpMethod.Get, "/todo")) {
-                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent,
                     object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
                 items.size() shouldBe 0
             }
@@ -156,7 +159,7 @@ class TodoServerTest : StringSpec({
             val id = addItemUsingPOST("hello")
             handleRequest(HttpMethod.Delete, "/todo/$id")
             with(handleRequest(HttpMethod.Get, "/todo/cancelled")) {
-                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent!!,
+                val items = DefaultJacksonMapper.mapper.readValue(response.byteContent,
                     object : TypeReference<Seq<Tuple2<TodoIdAlt, TodoItem>>>() {})
                 items.size() shouldBe 1
             }
@@ -178,8 +181,8 @@ class TodoServerTest : StringSpec({
 
 private fun TestApplicationEngine.addItemUsingPOST(title: String): Int =
     with(handleRequest(HttpMethod.Post, "/todo?title=$title")) {
-        val addedId = DefaultJacksonMapper.mapper.readValue(response.byteContent!!, TodoIdAlt::class.java)
-        addedId.id
+        val addedId = DefaultJacksonMapper.mapper.readValue(response.byteContent, Int::class.java)
+        addedId
     }
 
-data class TodoIdAlt(val id: Int)
+data class TodoIdAlt @JsonCreator(mode = JsonCreator.Mode.DELEGATING) constructor(val id: Int)

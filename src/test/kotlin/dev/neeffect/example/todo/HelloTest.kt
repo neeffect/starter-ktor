@@ -10,6 +10,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.handleRequest
 import io.ktor.server.testing.withTestApplication
 
+@Suppress("ReturnUnit")
 class HelloTest : StringSpec({
     "server should return hello" {
         withTestApplication(rest) {
@@ -24,6 +25,7 @@ class HelloTest : StringSpec({
         }
     }
 }) {
+    @Suppress("ReturnUnit")
     companion object {
         val rest: Application.() -> Unit = testApplication(
             DefaultJacksonMapper.mapper,
