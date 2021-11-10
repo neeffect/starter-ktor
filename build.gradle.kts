@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm") version "1.5.31"
-    id("io.gitlab.arturbosch.detekt").version("1.17.0")
+    id("io.gitlab.arturbosch.detekt").version("1.18.1")
 }
 
 
@@ -16,7 +16,7 @@ val nee_version = "0.7.4"
 
 dependencies {
     implementation("pl.setblack:nee-ctx-web-ktor:$nee_version")
-    detektPlugins("pl.setblack:kure-potlin:0.5.0")
+    detektPlugins("pl.setblack:kure-potlin:0.6.0")
     detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.16.0")
     implementation("io.ktor:ktor-http-jvm:$ktor_version")
     implementation("io.ktor:ktor-jackson:$ktor_version")
