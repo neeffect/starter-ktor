@@ -39,7 +39,6 @@ compileKotlin.kotlinOptions.apply {
     jvmTarget = "1.8"
     javaParameters = true
     allWarningsAsErrors = true
-    freeCompilerArgs = listOf("-XXLanguage:+InlineClasses")
 }
 
 val compileTestKotlin: org.jetbrains.kotlin.gradle.tasks.KotlinCompile by tasks
@@ -47,7 +46,6 @@ compileTestKotlin.kotlinOptions.apply {
     jvmTarget = "1.8"
     javaParameters = true
     allWarningsAsErrors = true
-    freeCompilerArgs = listOf("-XXLanguage:+InlineClasses")
 }
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
