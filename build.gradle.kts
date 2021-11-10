@@ -8,7 +8,6 @@ repositories {
     mavenLocal()
     mavenCentral()
     jcenter()
-    maven { url = uri("https://dl.bintray.com/arrow-kt/arrow-kt/") }
 }
 
 val ktor_version = "1.6.5"
